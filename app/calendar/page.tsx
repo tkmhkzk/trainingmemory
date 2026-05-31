@@ -5,20 +5,29 @@ import type { WorkoutSession } from "@/types";
 import Link from "next/link";
 
 export default async function CalendarPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+  let sessions: WorkoutSession[] = [];
 
-  const { data: sessions } = await supabase
-    .from("workout_sessions")
-    .select(`
-      id, date,
-      exercise_logs (
-        id, menu_item_id, custom_name,
-        menu_item:menu_items (id, name, body_part),
-        set_records (id, weight, reps, sort_order)
-      )
-    `)
-    .order("date", { ascending: false });
+  try {
+    const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    user = authData?.user ?? null;
+
+    const { data } = await supabase
+      .from("workout_sessions")
+      .select(`
+        id, date,
+        exercise_logs (
+          id, menu_item_id, custom_name,
+          menu_item:menu_items (id, name, body_part),
+          set_records (id, weight, reps, sort_order)
+        )
+      `)
+      .order("date", { ascending: false });
+    sessions = (data as unknown as WorkoutSession[]) ?? [];
+  } catch {
+    // env vars not set or Supabase unreachable - render static UI
+  }
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -38,7 +47,7 @@ export default async function CalendarPage() {
 
       <div className="flex-1 overflow-y-auto pb-nav">
         <div className="bg-white mb-3">
-          <CalendarGrid sessions={(sessions as unknown as WorkoutSession[]) ?? []} />
+          <CalendarGrid sessions={sessions} />
         </div>
 
         {user && (
