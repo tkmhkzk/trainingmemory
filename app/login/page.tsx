@@ -15,14 +15,20 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError("メールアドレスまたはパスワードが違います");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError("メールアドレスまたはパスワードが違います");
+        setLoading(false);
+      } else {
+        router.push("/calendar");
+        router.refresh();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("接続エラー。環境変数が設定されているか確認してください。");
       setLoading(false);
-    } else {
-      router.push("/calendar");
-      router.refresh();
     }
   }
 
