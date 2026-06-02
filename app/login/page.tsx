@@ -26,8 +26,9 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err) {
-      console.error(err);
-      setError("接続エラー。環境変数が設定されているか確認してください。");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Login error:", msg);
+      setError(`接続エラー: ${msg}`);
       setLoading(false);
     }
   }
