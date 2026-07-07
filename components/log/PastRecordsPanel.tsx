@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase";
+import { useState } from "react";
+import { getPastRecords } from "@/lib/storage";
 import type { WorkoutSession } from "@/types";
 
 interface Props {
@@ -12,27 +12,11 @@ interface Props {
 export default function PastRecordsPanel({ menuItemId, currentDate }: Props) {
   const [open, setOpen] = useState(false);
   const [records, setRecords] = useState<WorkoutSession[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  async function load() {
-    if (records.length > 0) { setOpen(true); return; }
-    setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("workout_sessions")
-      .select(`
-        id, date,
-        exercise_logs!inner (
-          id, custom_name,
-          set_records (weight, reps, sort_order)
-        )
-      `)
-      .eq("exercise_logs.menu_item_id", menuItemId)
-      .lt("date", currentDate)
-      .order("date", { ascending: false })
-      .limit(5);
-    setRecords((data as WorkoutSession[]) ?? []);
-    setLoading(false);
+  function load() {
+    if (records.length === 0) {
+      setRecords(getPastRecords(menuItemId, currentDate));
+    }
     setOpen(true);
   }
 
@@ -51,8 +35,7 @@ export default function PastRecordsPanel({ menuItemId, currentDate }: Props) {
 
       {open && (
         <div className="bg-blue-50 rounded-xl p-3 mt-1 space-y-2">
-          {loading && <p className="text-xs text-gray-400">読み込み中...</p>}
-          {!loading && records.length === 0 && (
+          {records.length === 0 && (
             <p className="text-xs text-gray-400">過去の記録なし</p>
           )}
           {records.map((session) => {

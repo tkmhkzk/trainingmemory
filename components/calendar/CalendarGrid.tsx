@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DayCell from "./DayCell";
+import { toDateStr } from "@/lib/storage";
 import type { WorkoutSession } from "@/types";
 
 interface Props {
@@ -63,7 +64,7 @@ export default function CalendarGrid({ sessions }: Props) {
           <DayCell
             key={i}
             date={date}
-            session={date ? sessionMap.get(date.toISOString().split("T")[0]) ?? null : null}
+            session={date ? sessionMap.get(toDateStr(date)) ?? null : null}
             isToday={date ? date.toDateString() === today.toDateString() : false}
             dow={date ? date.getDay() : -1}
           />
