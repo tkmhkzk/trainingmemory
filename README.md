@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Training Memo 💪
 
-## Getting Started
+シンプルなトレーニング記録アプリ（PWA対応）。
 
-First, run the development server:
+## 仕組み
+
+- **ローカルファースト**: 記録はまず端末（ブラウザのlocalStorage）に保存されます。ログインなし・オフラインでも全機能が使えます。
+- **クラウド同期（任意）**: ログインすると記録がSupabaseに自動バックアップされ、別の端末からも同じ記録を見られます。
+  - 保存のたびに数秒後に自動同期（設定画面から手動同期も可能）
+  - 端末ごとの初回同期では、端末内の記録とクラウドの記録を日付単位でマージ
+  - 以降は更新が新しい側を正とするシンプルな同期（個人利用前提）
+- **バックアップ**: 設定画面からJSONファイルのエクスポート/インポートができます。
+
+## 画面
+
+- `/calendar` — 月間カレンダー（部位の色ドット・今月のトレーニング日数）
+- `/log/[date]` — その日の記録。種目ごとに「前回の記録」を表示
+- `/menu` — 種目マスタの管理
+- `/settings` — アカウント・同期状態・データ管理
+- `/login` — ログイン（任意）
+
+## 開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+クラウド同期を使う場合は `.env.local` に以下を設定します（未設定でもローカルのみで動作します）:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Supabase側には `app_state` テーブル（ユーザーごとに1行のJSONB、RLSで本人のみアクセス可）が必要です。
 
-## Learn More
+## 主要ファイル
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `lib/storage.ts` — localStorageのデータ層（メニュー・記録・変更通知・エクスポート/インポート）
+- `lib/sync.ts` — クラウド同期ロジック
+- `components/SyncManager.tsx` — 変更・ログイン・画面復帰を監視して自動同期

@@ -1,10 +1,41 @@
 import { BODY_PARTS } from "@/types";
 import type { BodyPart, MenuItem, WorkoutSession } from "@/types";
 
-// 端末のlocalStorageのみにデータを保持する（サーバー送信なし）
+// 端末のlocalStorageを一次ストアとして使う。
+// ログイン時はlib/sync.tsがこの内容をSupabaseへバックアップ/同期する。
 const MENU_KEY = "tm:menu_items";
 const MENU_SEEDED_KEY = "tm:menu_seeded";
 const SESSIONS_KEY = "tm:sessions";
+const UPDATED_AT_KEY = "tm:updated_at";
+
+export interface AppData {
+  menu_items: MenuItem[];
+  sessions: Record<string, WorkoutSession>;
+}
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+// データ変更を購読する（ユーザー操作・同期による書き換えの両方で発火）
+export function subscribe(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
+// ユーザー操作による変更のみ更新時刻を記録する（同期の競合判定に使う）
+function touch() {
+  localStorage.setItem(UPDATED_AT_KEY, new Date().toISOString());
+  notify();
+}
+
+export function getLocalUpdatedAt(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(UPDATED_AT_KEY);
+}
 
 const DEFAULT_MENUS: { name: string; body_part: BodyPart }[] = [
   { name: "ベンチプレス", body_part: "胸" },
@@ -74,6 +105,7 @@ export function addMenuItem(name: string, body_part: BodyPart): MenuItem {
   const items = read<MenuItem[]>(MENU_KEY, []);
   const item: MenuItem = { id: crypto.randomUUID(), name, body_part };
   write(MENU_KEY, [...items, item]);
+  touch();
   return item;
 }
 
@@ -83,6 +115,7 @@ export function updateMenuItem(id: string, name: string, body_part: BodyPart) {
     MENU_KEY,
     items.map((m) => (m.id === id ? { ...m, name, body_part } : m))
   );
+  touch();
 }
 
 export function deleteMenuItem(id: string) {
@@ -91,6 +124,7 @@ export function deleteMenuItem(id: string) {
     MENU_KEY,
     items.filter((m) => m.id !== id)
   );
+  touch();
 }
 
 type SessionMap = Record<string, WorkoutSession>;
@@ -153,7 +187,57 @@ export function saveSession(session: WorkoutSession): WorkoutSession {
     map[session.date] = saved;
   }
   write(SESSIONS_KEY, map);
+  touch();
   return saved;
+}
+
+// ---- 同期・エクスポート/インポート用 ----
+
+export function getSnapshot(): AppData {
+  return {
+    menu_items: read<MenuItem[]>(MENU_KEY, []),
+    sessions: read<SessionMap>(SESSIONS_KEY, {}),
+  };
+}
+
+// 同期のプル結果でローカルを置き換える。updatedAtはクラウド側の値を引き継ぐ
+export function replaceAll(data: AppData, updatedAt: string) {
+  write(MENU_KEY, data.menu_items ?? []);
+  write(SESSIONS_KEY, data.sessions ?? {});
+  write(MENU_SEEDED_KEY, true);
+  localStorage.setItem(UPDATED_AT_KEY, updatedAt);
+  notify();
+}
+
+export function exportData(): string {
+  return JSON.stringify(
+    { version: 1, exported_at: new Date().toISOString(), ...getSnapshot() },
+    null,
+    2
+  );
+}
+
+export function importData(json: string): { sessions: number; menus: number } {
+  const parsed = JSON.parse(json) as Partial<AppData>;
+  if (!parsed || typeof parsed !== "object" || !parsed.sessions || !Array.isArray(parsed.menu_items)) {
+    throw new Error("invalid backup file");
+  }
+  write(MENU_KEY, parsed.menu_items);
+  write(SESSIONS_KEY, parsed.sessions);
+  write(MENU_SEEDED_KEY, true);
+  touch();
+  return {
+    sessions: Object.keys(parsed.sessions).length,
+    menus: parsed.menu_items.length,
+  };
+}
+
+export function clearAllData() {
+  localStorage.removeItem(MENU_KEY);
+  localStorage.removeItem(SESSIONS_KEY);
+  localStorage.removeItem(MENU_SEEDED_KEY);
+  localStorage.removeItem(UPDATED_AT_KEY);
+  notify();
 }
 
 // 指定種目の過去の記録（currentDateより前）を新しい順に返す

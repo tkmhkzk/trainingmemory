@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import ExerciseEntry from "@/components/log/ExerciseEntry";
 import AddExerciseSheet from "@/components/log/AddExerciseSheet";
 import Nav from "@/components/Nav";
-import { getMenuItems, getSession, saveSession, todayStr } from "@/lib/storage";
+import { getMenuItems, getSession, saveSession, todayStr, subscribe } from "@/lib/storage";
 import type { ExerciseLog, MenuItem, WorkoutSession } from "@/types";
 
 export default function LogPage() {
@@ -22,6 +22,11 @@ export default function LogPage() {
     setMenuItems(getMenuItems());
     setSession(getSession(date) ?? { id: "", date, exercise_logs: [] });
     setLoaded(true);
+    const unsub = subscribe(() => {
+      setMenuItems(getMenuItems());
+      setSession(getSession(date) ?? { id: "", date, exercise_logs: [] });
+    });
+    return unsub;
   }, [date]);
 
   function persist(updated: WorkoutSession) {

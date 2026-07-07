@@ -38,6 +38,9 @@ export default function CalendarGrid({ sessions }: Props) {
 
   const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const trainedDays = sessions.filter((s) => s.date.startsWith(monthPrefix) && (s.exercise_logs ?? []).length > 0).length;
+
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-3">
@@ -53,6 +56,10 @@ export default function CalendarGrid({ sessions }: Props) {
           </svg>
         </button>
       </div>
+
+      {trainedDays > 0 && (
+        <p className="text-center text-xs text-gray-400 pb-1">今月のトレーニング {trainedDays}日</p>
+      )}
 
       <div className="grid grid-cols-7 px-2">
         {DOW.map((d, i) => (

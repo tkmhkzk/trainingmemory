@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import MenuItemForm from "@/components/menu/MenuItemForm";
 import Nav from "@/components/Nav";
-import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/storage";
+import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem, subscribe } from "@/lib/storage";
 import { BODY_PARTS, BODY_PART_COLORS } from "@/types";
 import type { MenuItem, BodyPart } from "@/types";
 
@@ -14,6 +14,8 @@ export default function MenuPage() {
 
   useEffect(() => {
     setItems(getMenuItems());
+    const unsub = subscribe(() => setItems(getMenuItems()));
+    return unsub;
   }, []);
 
   function handleSave(name: string, bodyPart: BodyPart) {

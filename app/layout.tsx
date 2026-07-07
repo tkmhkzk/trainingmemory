@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import SyncManager from "@/components/SyncManager";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,7 +32,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#ffffff" />
       </head>
-      <body className="h-full bg-gray-50">{children}</body>
+      <body className="h-full bg-gray-50">
+        <SyncManager />
+        {children}
+      </body>
     </html>
   );
 }
