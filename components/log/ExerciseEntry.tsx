@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import SetRow from "./SetRow";
 import PastRecordsPanel from "./PastRecordsPanel";
+import { getPastRecords } from "@/lib/storage";
 import type { ExerciseLog, SetRecord } from "@/types";
 
 interface Props {
@@ -16,6 +17,20 @@ export default function ExerciseEntry({ log, date, onUpdate, onDelete }: Props) 
   const [editingName, setEditingName] = useState(false);
   const displayName = log.custom_name || log.menu_item?.name || "種目";
   const sets = (log.set_records ?? []).sort((a, b) => a.sort_order - b.sort_order);
+
+  const last = useMemo(() => getPastRecords(log.menu_item_id, date, 1)[0], [log.menu_item_id, date]);
+
+  const lastLabel = useMemo(() => {
+    if (!last?.exercise_logs?.[0]?.set_records?.length) return "";
+    const dateObj = new Date(last.date + "T00:00:00");
+    const month = dateObj.getMonth() + 1;
+    const day = dateObj.getDate();
+    const sets = last.exercise_logs[0].set_records
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((s) => `${s.weight}kg×${s.reps}`)
+      .join(" ");
+    return `${month}/${day} ${sets}`;
+  }, [last]);
 
   function updateSet(index: number, weight: number, reps: number) {
     const updated = sets.map((s, i) => i === index ? { ...s, weight, reps } : s);
@@ -65,6 +80,11 @@ export default function ExerciseEntry({ log, date, onUpdate, onDelete }: Props) 
             </button>
           )}
           <p className="text-xs text-gray-400 mt-0.5">{log.menu_item?.body_part}</p>
+          {lastLabel && (
+            <p className="text-xs text-blue-400 mt-0.5">
+              前回 {lastLabel}
+            </p>
+          )}
         </div>
         <button
           onClick={onDelete}

@@ -1,75 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
 import MenuItemForm from "@/components/menu/MenuItemForm";
 import Nav from "@/components/Nav";
+import { getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem, subscribe } from "@/lib/storage";
 import { BODY_PARTS, BODY_PART_COLORS } from "@/types";
 import type { MenuItem, BodyPart } from "@/types";
-
-const DEFAULT_MENUS: { name: string; body_part: BodyPart }[] = [
-  { name: "ベンチプレス", body_part: "胸" },
-  { name: "ダンベルフライ", body_part: "胸" },
-  { name: "ペックデック", body_part: "胸" },
-  { name: "懸垂", body_part: "背中" },
-  { name: "ラットプルダウン", body_part: "背中" },
-  { name: "シーテッドロウ", body_part: "背中" },
-  { name: "スクワット", body_part: "脚" },
-  { name: "レッグプレス", body_part: "脚" },
-  { name: "ルーマニアンデッドリフト", body_part: "脚" },
-  { name: "ショルダープレス", body_part: "肩" },
-  { name: "サイドレイズ", body_part: "肩" },
-  { name: "バーベルカール", body_part: "腕" },
-  { name: "トライセプスプレスダウン", body_part: "腕" },
-  { name: "プランク", body_part: "体幹" },
-  { name: "ランニング", body_part: "有酸素" },
-];
 
 export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
-  const [user, setUser] = useState<{ id: string } | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
-      setUser(user);
-      loadItems(supabase);
-    });
+    setItems(getMenuItems());
+    const unsub = subscribe(() => setItems(getMenuItems()));
+    return unsub;
   }, []);
 
-  async function loadItems(supabase: ReturnType<typeof createClient>) {
-    const { data } = await supabase.from("menu_items").select("*").order("body_part").order("name");
-    if (data && data.length === 0) {
-      await supabase.from("menu_items").insert(DEFAULT_MENUS);
-      const { data: seeded } = await supabase.from("menu_items").select("*").order("body_part").order("name");
-      setItems((seeded as MenuItem[]) ?? []);
-    } else {
-      setItems((data as MenuItem[]) ?? []);
-    }
-  }
-
-  async function handleSave(name: string, bodyPart: BodyPart) {
-    const supabase = createClient();
+  function handleSave(name: string, bodyPart: BodyPart) {
     if (editItem) {
-      await supabase.from("menu_items").update({ name, body_part: bodyPart }).eq("id", editItem.id);
+      updateMenuItem(editItem.id, name, bodyPart);
     } else {
-      await supabase.from("menu_items").insert({ name, body_part: bodyPart });
+      addMenuItem(name, bodyPart);
     }
     setShowForm(false);
     setEditItem(null);
-    loadItems(supabase);
+    setItems(getMenuItems());
   }
 
-  async function handleDelete(id: string) {
+  function handleDelete(id: string) {
     if (!confirm("削除しますか？")) return;
-    const supabase = createClient();
-    await supabase.from("menu_items").delete().eq("id", id);
-    setItems((prev) => prev.filter((m) => m.id !== id));
+    deleteMenuItem(id);
+    setItems(getMenuItems());
   }
 
   return (
@@ -131,7 +94,7 @@ export default function MenuPage() {
         </div>
       </div>
 
-      <Nav isAuthed={!!user} />
+      <Nav />
     </div>
   );
 }

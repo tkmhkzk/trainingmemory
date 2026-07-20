@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { toDateStr } from "@/lib/storage";
 import { BODY_PART_COLORS } from "@/types";
 import type { WorkoutSession, BodyPart } from "@/types";
 
@@ -12,7 +13,7 @@ interface Props {
 export default function DayCell({ date, session, isToday, dow }: Props) {
   if (!date) return <div />;
 
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = toDateStr(date);
   const bodyParts = session?.exercise_logs
     ? [...new Set(session.exercise_logs.map((e) => e.menu_item?.body_part).filter(Boolean) as BodyPart[])]
     : [];

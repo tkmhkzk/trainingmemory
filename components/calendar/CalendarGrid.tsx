@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import DayCell from "./DayCell";
+import { toDateStr } from "@/lib/storage";
 import type { WorkoutSession } from "@/types";
 
 interface Props {
@@ -37,6 +38,9 @@ export default function CalendarGrid({ sessions }: Props) {
 
   const DOW = ["日", "月", "火", "水", "木", "金", "土"];
 
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const trainedDays = sessions.filter((s) => s.date.startsWith(monthPrefix) && (s.exercise_logs ?? []).length > 0).length;
+
   return (
     <div>
       <div className="flex items-center justify-between px-4 py-3">
@@ -53,6 +57,10 @@ export default function CalendarGrid({ sessions }: Props) {
         </button>
       </div>
 
+      {trainedDays > 0 && (
+        <p className="text-center text-xs text-gray-400 pb-1">今月のトレーニング {trainedDays}日</p>
+      )}
+
       <div className="grid grid-cols-7 px-2">
         {DOW.map((d, i) => (
           <div key={d} className={`text-center text-xs font-medium py-1 ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-gray-400"}`}>
@@ -63,7 +71,7 @@ export default function CalendarGrid({ sessions }: Props) {
           <DayCell
             key={i}
             date={date}
-            session={date ? sessionMap.get(date.toISOString().split("T")[0]) ?? null : null}
+            session={date ? sessionMap.get(toDateStr(date)) ?? null : null}
             isToday={date ? date.toDateString() === today.toDateString() : false}
             dow={date ? date.getDay() : -1}
           />
